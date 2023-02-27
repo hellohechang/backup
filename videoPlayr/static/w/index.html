@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="shortcut icon" href="../favicon.ico" type="image/x-icon">
+  <title class="mytitle">videoPlayer</title>
+  <style>
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      padding: 0;
+      margin: 0;
+      overflow: hidden;
+    }
+
+    .btn {
+      position: absolute;
+      top: 30px;
+      left: 30px;
+      padding: 10px;
+      background-color: rgba(23, 24, 24, 0.685);
+      border-radius: 10px;
+      border: none;
+      color: #fff;
+      cursor: pointer;
+      z-index: 2;
+    }
+
+    .btn:hover {
+      background-color: rgba(0, 0, 0, 0.856);
+    }
+
+    .vlist {
+      display: none;
+      position: absolute;
+      width: 400px;
+      height: 100%;
+      overflow-y: auto;
+      background-color: rgb(245, 243, 240);
+      z-index: 3;
+    }
+
+    @media (max-width: 769px) {
+      .vlist {
+        width: 80%;
+      }
+    }
+
+    .vlist div {
+      line-height: 40px;
+      height: 40px;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      text-indent: 10px;
+      background-color: rgb(245, 243, 240);
+      border-bottom: 1px solid #ccc;
+      box-sizing: border-box;
+      cursor: pointer;
+    }
+
+    .vlist div.active {
+      background-color: rgb(206, 149, 64);
+      color: rgb(194, 49, 49);
+    }
+
+    .vlist div:hover {
+      background-color: rgb(131, 130, 128);
+      color: #ccc;
+    }
+
+    /* .vlist::-webkit-scrollbar {
+      display: none;
+    } */
+
+    .vbox {
+      width: 100%;
+      height: 100%;
+    }
+
+    .vbox video {
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+
+<body>
+  <button class="btn">目录</button>
+  <nav class="vlist"></nav>
+  <main class="vbox">
+    <video controls src=""></video>
+  </main>
+  <script>
+    // 页面加载进度条效果
+    class LoadingBar {
+      constructor(options) {
+        this.num = 0;
+        this.loadnum = 0;
+        this.randomnum = 0;
+        this.timer = null;
+        this.init(options);
+      }
+      init(options) {
+        let defaultobj = {
+          color: 'red',
+          size: '3',
+          setStart: null,
+          setEnd: null
+        }
+        this.options = Object.assign(defaultobj, options);
+        this.render()
+      }
+      render() {
+        this.el = document.createElement('div');
+        let { color, size } = this.options;
+        this.el.style.cssText = `
+    height: ${size}px;
+    background-color: ${color};
+    position: fixed;
+    top: 0;
+    left: 0;
+    border-radio:20px;
+    pointer-events: none;
+    z-index: 9999999999;
+    background-image: linear-gradient(to right, Green, Orange, red);
+    opacity: 0;`
+        document.body.appendChild(this.el)
+      }
+      start() {
+        this.num++;
+        if (this.num === 1) {
+          this.el.style.opacity = '1';
+          this.el.style.transition = 'none';
+          this.el.style.width = '0px';
+          this.randomnum = Math.round(Math.random() * (100 - 30) + 30)
+          this.animate();
+          this.options.setStart && this.options.setStart()
+        }
+      }
+      end() {
+        this.num--;
+        this.num <= 0 ? this.num = 0 : null;
+        if (this.num === 0) {
+          this.loadnum = 0
+          this.el.style.width = '100%';
+          this.el.style.transition = 'opacity 1.5s';
+          this.el.style.opacity = 0;
+          if (this.timer !== null) {
+            cancelAnimationFrame(this.timer);
+            this.timer = null;
+          }
+          this.options.setEnd && this.options.setEnd()
+        }
+      }
+      animate() {
+        this.loadnum += 0.5;
+        this.el.style.width = this.loadnum + "%";
+        if (this.loadnum >= this.randomnum) {
+          if (this.timer !== null) {
+            cancelAnimationFrame(this.timer);
+            this.timer = null;
+          }
+          return;
+        }
+        this.timer = requestAnimationFrame(this.animate.bind(this));
+      }
+    }
+
+    let _loadingBar = new LoadingBar({
+      color: 'red',//进度条颜色
+      size: '4',//进度条粗细（px）
+      setStart() {//自定义开始回调
+      },
+      setEnd() {//自定义结束回调
+      }
+    })
+    _loadingBar.start();
+    window.onload = function () {
+      _loadingBar.end()
+    };
+    ~function () {
+      let btn = document.querySelector('.btn'),
+        vlist = document.querySelector('.vlist'),
+        vbox = document.querySelector('.vbox'),
+        mytitle = document.querySelector('.mytitle'),
+        _video = document.querySelector('video');
+      // 混合排序
+      function mixedSort(a, b) {
+        if (/^\d+/.test(a) && /^\d+/.test(b)) {
+          return /^\d+/.exec(a) - /^\d+/.exec(b);
+        } else if (isChinese(a) && isChinese(b)) {
+          return a.localeCompare(b, 'zh-CN')
+        } else {
+          return a.localeCompare(b, 'en');
+        }
+      }
+      function isChinese(str) {
+        if (/^[\u4E00-\u9FCC\u3400-\u4DB5\uFA0E\uFA0F\uFA11\uFA13\uFA14\uFA1F\uFA21\uFA23\uFA24\uFA27-\uFA29]|[\ud840-\ud868][\udc00-\udfff]|\ud869[\udc00-\uded6\udf00-\udfff]|[\ud86a-\ud86c][\udc00-\udfff]|\ud86d[\udc00-\udf34\udf40-\udfff]|\ud86e[\udc00-\udc1d]+/.test(str)) {
+          return true;
+        } else {
+          return false;
+        }
+      }
+      function _getURLParams(url) {
+        let obj = {};
+        url.replace(/([^?=&#]+)=([^?=&#]+)/g, (...[, $1, $2]) => obj[$1] = $2);
+        url.replace(/#([^?=&#]+)/g, (...[, $1]) => obj['HASH'] = $1);
+        return obj;
+      }
+      let uu = window.location.href
+      let HASH = _getURLParams(uu).HASH
+      let reg = /^(https:\/\/|http:\/\/)([\w\.:]+)/,
+        sideURL = uu.match(reg)[0];
+      let activenum = null,
+        listarr = null,
+        _vurl = null;
+      function _getAjax(url) {
+
+        return new Promise((resolve, reject) => {
+          let xhr = new XMLHttpRequest;
+
+          xhr.open('GET', `${sideURL}${url}`)
+
+          xhr.onreadystatechange = function () {
+            if (xhr.status >= 200 && xhr.status < 400) {
+              if (xhr.readyState === 4) {
+                resolve(JSON.parse(xhr.response));
+              }
+              return
+            }
+            reject()
+          }
+          xhr.send()
+        })
+      }
+      if (HASH) {
+        mytitle.innerHTML = decodeURIComponent(HASH)
+        _getAjax(`/videolist?name=${encodeURIComponent(HASH)}`).then(result => {
+          let {
+            vurl,
+            data,
+            last
+          } = result;
+          _vurl = vurl;
+
+          data.sort((a, b) => {
+            return mixedSort(a, b)
+          })
+          listarr = data
+          let str = ''
+          data.forEach((item, index) => {
+            str += `<div title=${item} data-index=${index}>${item}</div>`
+          });
+          vlist.innerHTML = str
+          if (last) {
+            let ii = data.findIndex(item => item === last.name)
+            if (ii >= 0) {
+              mytitle.innerHTML = last.name
+              activenum = ii
+              _video.src = `${sideURL}/video/${HASH}/${last.name}`
+              _video.currentTime = last.speed
+            }
+          }
+        })
+      }
+      vlist.addEventListener('click', function (e) {
+        let target = e.target;
+        if (target.tagName === 'DIV') {
+          let ii = target.getAttribute('data-index'),
+            name = listarr[ii];
+          let vitems = vlist.querySelectorAll('div')
+          if (parseInt(activenum) !== parseInt(ii)) {
+            _video.src = `${sideURL}/video/${HASH}/${name}`
+          }
+          mytitle.innerHTML = name
+          _video.play()
+          activenum = ii
+          vitems.forEach((item, index) => {
+            if (index === parseInt(ii)) {
+              item.classList.add('active')
+              return
+            }
+            item.classList.remove('active')
+          })
+        }
+      })
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation()
+        vlist.style.display = 'block'
+        let vitems = vlist.querySelectorAll('div')
+        if (activenum !== null) {
+          vlist.scrollTop = activenum * 40
+          vitems.forEach((item, index) => {
+            if (index == activenum) {
+              item.classList.add('active')
+              return
+            }
+            item.classList.remove('active')
+          })
+        }
+      })
+      vbox.addEventListener('click', (e) => {
+        if (vlist.style.display === 'block') {
+          vlist.style.display = 'none'
+          e.preventDefault()
+        }
+      })
+      setInterval(() => {
+        if (activenum === null || listarr === null) return
+        let name = listarr[activenum],
+          speed = _video.currentTime;
+        if (!_video.paused) {
+          _getAjax(`/savespeed?name=${encodeURIComponent(name)}&speed=${speed}&lname=${encodeURIComponent(HASH)}`)
+        }
+      }, 3 * 1000)
+
+      let timer = null;
+      vbox.addEventListener('mousemove', () => {
+        btn.style.display = 'block'
+        if (timer) {
+          clearInterval(timer)
+        }
+
+        timer = setTimeout(() => {
+          clearInterval(timer)
+          btn.style.display = 'none'
+        }, 3000)
+      })
+      vbox.addEventListener('touchstart', () => {
+        btn.style.display = 'block'
+        if (timer) {
+          clearInterval(timer)
+        }
+
+        timer = setTimeout(() => {
+          clearInterval(timer)
+          btn.style.display = 'none'
+        }, 3000)
+        if (vlist.style.display === 'block') {
+          vlist.style.display = 'none'
+        }
+      })
+    }()
+
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="google" content="notranslate" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="assets">
+  <link rel="stylesheet" href="/css/iconfont.css?v=1672195985784hechang">
+  <link rel="stylesheet" href="/css/reset.css?v=1672195985784hechang" />
+  <link rel="stylesheet icon" href="/img/upfile.png">
+  <title>upFile</title>
+  <style>
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-image: linear-gradient(to top, #a8edea 0%, #fed6e3 100%);
+    }
+
+    .box {
+      width: 100%;
+      max-width: 1000px;
+      margin: 0 auto;
+      height: 100%;
+      display: flex;
+      flex-flow: column;
+    }
+
+    header {
+      flex: none;
+      padding: 10px;
+      display: flex;
+      flex-flow: row wrap;
+      color: #767676;
+    }
+
+    .box header div {
+      flex: none;
+      width: 30px;
+      text-align: center;
+      line-height: 30px;
+      font-size: 24px;
+      margin: 0 10px;
+    }
+
+    .box header div:hover {
+      color: #000000;
+    }
+
+    header .searchfile {
+      flex: none;
+      margin-left: 20px;
+      border: none;
+      background: #ffffff6e;
+      box-sizing: border-box;
+      outline: none;
+      text-align: center;
+      line-height: 30px;
+      font-size: 24px;
+    }
+
+    main {
+      flex: 1 1 auto;
+      overflow-y: auto;
+    }
+
+    main .fileitem {
+      display: flex;
+      box-sizing: border-box;
+      padding: 14px;
+      border-top: 1px solid #ccc;
+    }
+
+
+    main .fileitem:nth-child(odd) {
+      background-color: #cccccc49;
+    }
+
+    main .fileitem:hover span:nth-child(2) {
+      color: #e96262;
+    }
+
+    main .fileitem.open {
+      background-color: #5eedd08c;
+    }
+
+    main .fileitem span {
+      flex: none;
+      display: flex;
+      padding: 0 10px;
+      flex-flow: row wrap;
+      justify-content: center;
+      align-items: center;
+    }
+
+    main .fileitem span:nth-child(1) {
+      font-size: 24px;
+      color: #767676;
+    }
+
+    main .fileitem span:nth-child(2) {
+      flex: auto;
+      word-break: break-all;
+      justify-content: left;
+      color: #444;
+    }
+
+    .pagingbox {
+      float: left;
+      width: 100%;
+      margin: 30px auto;
+      line-height: 30px;
+      font-size: 16px;
+      text-align: center;
+    }
+
+    .showpage {
+      position: fixed;
+      bottom: 10px;
+      right: 10px;
+      background-color: rgb(248 245 245 / 70%);
+      height: 25px;
+      outline: none;
+      border: 1px solid #aaa;
+      z-index: 5;
+      font-size: 20px;
+      color: #444444;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="box">
+    <header>
+      <div cursor class="checkall iconfont icon-xuanzeweixuanze"></div>
+      <div cursor class="delall iconfont icon-cangpeitubiao_shanchu"></div>
+      <div cursor class="download iconfont icon-xiazai"></div>
+      <div cursor class="upfile iconfont icon-shangchuan1"></div>
+      <input class="searchfile" placeholder="搜索" type="search">
+    </header>
+    <main></main>
+  </div>
+  <select cursor class="showpage">
+    <option value="20">20/page</option>
+    <option value="40">40/page</option>
+    <option value="60">60/page</option>
+    <option value="80">80/page</option>
+    <option value="100">100/page</option>
+    <option value="200">200/page</option>
+    <option value="500">500/page</option>
+  </select>
+  <script src="/js/jquery-3.6.0.min.js"></script>
+  <script src="/js/common.js?v=1672195985784hechang"></script>
+  <script>
+    ~function () {
+      // 下载文件
+      function downloadFile(url, fileName) {
+        let a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
+      let $checkall = $('.checkall'),
+        $delall = $('.delall'),
+        $download = $('.download'),
+        $main = $('main'),
+        $searchfile = $('.searchfile'),
+        $showpage = $('.showpage'),
+        pagenow = 1,
+        $upfile = $('.upfile');
+      rander(true)
+      $upfile.click(function () {
+        let input = document.createElement('input');
+        input.type = 'file';
+        input.multiple = 'multiple';
+        input.style.display = 'none'
+        document.body.appendChild(input)
+        input.click();
+        let $input = $(input);
+        $input.change(async (e) => {
+          var files = [...e.target.files];
+          $input.remove()
+          if (files.length == 0) return;
+          upFile(files)
+        });
+      })
+      function upFile(files) {
+        fn(0);
+        function fn(num) {
+          if (num >= files.length) {
+            pagenow = 0
+            rander(true)
+            return;
+          }
+          let filename = files[num].name;
+          let pro = new UpProgress(filename)
+          if (files[num].size == 0) {
+            _err(`${filename} 为空文件`);
+            pro.fail()
+            num++;
+            fn(num);
+            return
+          }
+          _upFile(`/file/up?name=${filename}`, files[num], function (pes) {
+            pro.update(pes)
+          }).then(() => {
+            pro.close()
+            num++;
+            fn(num);
+          }).catch(() => {
+            pro.fail()
+            num++;
+            fn(num);
+          })
+        }
+      }
+      function defaultrander() {
+        let str = ''
+        new Array(10).fill(null).forEach((item, idx) => {
+          str += `<label class="fileitem" style="height:60px;pointer-events: none;"></label>`
+        })
+        $main.html(str)
+      }
+      function rander(y) {
+        if (y) {
+          defaultrander()
+        }
+        $checkall.attr('class', 'checkall iconfont icon-xuanzeweixuanze')
+        let val = $searchfile.val().trim(),
+          showpage = _getData('upfileshowpage') || 20;
+        _getAjax('/file/getlist', { page: pagenow, val, showpage }).then(res => {
+          if (res.code == 0) {
+            let {
+              total,
+              totalPage,
+              pageNo,
+              data
+            } = res.data;
+            pagenow = pageNo;
+            let str = ``;
+            if (data.length === 0) {
+              str += `<p style="padding:20px;font-size:20px;color: #4595d5;">It feels lonely here...</p>`
+            } else {
+              data.forEach((item, idx) => {
+                let { name, size } = item;
+                str += `<label cursor class="fileitem" data-name="${name}">
+                <span class="iconfont ${fileLogoType(name)}"></span>
+                <span>${name}</span>
+                <span style="color:#4595d5;">${computeSize(size)}</span>
+              </label>`
+              });
+              if (totalPage > 1) {
+                str += `<ul class="pagingbox">`;
+                str += pagination({ pageNo, pageSize: showpage, total })
+                str += `</ul > `;
+              }
+            }
+            $main.html(str)
+            if (y) {
+              $main.scrollTop(0)
+            }
+          }
+        })
+      }
+      $main.on('click', '.fileitem', function () {
+        let $fileitem = $main.find('.fileitem');
+        let $this = $(this)
+        if ($this.hasClass('open')) {
+          $this.removeClass('open')
+        } else {
+          $this.addClass('open')
+        }
+        $selectarr = $fileitem.filter((index, item) => $(item).hasClass('open'));
+        _success(`选中 ${$selectarr.length}`, 1)
+        if ($selectarr.length == $fileitem.length) {
+          $checkall.attr('class', 'checkall iconfont icon-xuanzeyixuanze')
+        } else {
+          $checkall.attr('class', 'checkall iconfont icon-xuanzeweixuanze')
+        }
+      }).on('click', '.pagingbox', debounce(function (e) {
+        let target = e.target,
+          flag = target.getAttribute('data-flag');
+        if (target.tagName === 'BUTTON') {
+          if (flag === 'pre') {
+            pagenow--;
+            rander(true)
+          } else if (flag === 'next') {
+            pagenow++;
+            rander(true)
+          } else if (flag === 'go') {
+            let val = document.querySelector('.pagingbox #paginationBox input').value.trim();
+            val = parseInt(val)
+            if (isNaN(val)) return;
+            pagenow = val;
+            rander(true)
+          } else if (flag === 'gotop') {
+            $main.scrollTop(0);
+          } else {
+            pagenow = +flag;
+            rander(true)
+          }
+        }
+      }, 500, true))
+      $checkall.click(function () {
+        let $this = $(this)
+        let $fileitem = $main.find('.fileitem');
+        if ($this.hasClass('icon-xuanzeweixuanze')) {
+          $checkall.attr('class', 'checkall iconfont icon-xuanzeyixuanze')
+          $fileitem.addClass('open')
+          _success(`选中 ${$fileitem.length}`, 1)
+        } else {
+          $checkall.attr('class', 'checkall iconfont icon-xuanzeweixuanze')
+          $fileitem.removeClass('open')
+          _success(`选中 0`, 1)
+        }
+      })
+      $delall.click(function () {
+        let $fileitem = $('.fileitem');
+        $selectarr = $fileitem.filter((index, item) => $(item).hasClass('open'));
+        if ($selectarr.length == 0) return;
+        let arr = []
+        $selectarr.each((i, v) => {
+          let $v = $(v);
+          arr.push($v.attr("data-name"));
+        });
+        _postAjax('/file/del', { arr }).then(res => {
+          if (res.code == 0) {
+            rander()
+          }
+        })
+      })
+      $download.click(function () {
+        let $fileitem = $('.fileitem');
+        $selectarr = $fileitem.filter((index, item) => $(item).hasClass('open'));
+        if ($selectarr.length == 0) return;
+        if ($selectarr.length > 5) {
+          _err('单次只能下载五个文件')
+          return
+        };
+        $selectarr.each((i, v) => {
+          let name = $(v).attr("data-name");
+          downloadFile(`/getfile/${name}`, name)
+        });
+      })
+      $searchfile.on('input', (debounce(function () {
+        pagenow = 0
+        rander(true)
+      }, 1000)))
+      $showpage.val(_getData('upfileshowpage') || 20)
+      $showpage.on('change', function () {
+        let val = $(this).val();
+        _setData('upfileshowpage', val)
+        rander()
+      })
+    }();
+  </script>
+</body>
+
+</html>
